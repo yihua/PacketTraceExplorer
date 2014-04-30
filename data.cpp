@@ -484,7 +484,8 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                     }//*/
                     
                     //HTTP analysis
-                    /*if (ETHER_HDR_LEN + BYTES_PER_32BIT_WORD * (pip->ip_hl + ptcp->th_off) < header->caplen) {
+					// /*
+					if (ETHER_HDR_LEN + BYTES_PER_32BIT_WORD * (pip->ip_hl + ptcp->th_off) < header->caplen) {
                         //has TCP payload
                         payload = (char *)((char *)ptcp + BYTES_PER_32BIT_WORD * ptcp->th_off);
                         payload_str = string(payload);
@@ -536,7 +537,8 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                             //    cout << "HTTP_RESPONSE_SPECIAL " << payload_str << endl;
                             }
                         }
-                    }//*/
+                    }
+					//*/
                     
                     //BWE analysis, the first part can be used for G inference only
                     if (flow->gval < 0) {
