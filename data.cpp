@@ -437,6 +437,10 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                         if (b1 && !b2) { // uplink
                             if (payload_len > 0) {
                                 flow->total_up_payloads += payload_len;
+								flow->last_up_byte_time = ts;
+                                if (flow->first_up_byte_time == 0) {
+                                    flow->first_up_byte_time = ts;
+                                }
                             }
 							if (tcp_whole_len > 0) {
 								flow->total_up_data += tcp_whole_len;

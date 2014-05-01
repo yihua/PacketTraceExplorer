@@ -39,6 +39,8 @@ tcp_flow::tcp_flow() {
     has_ts_option_svr = false;
     first_byte_time = 0;
     last_byte_time = 0;
+	first_up_byte_time = 0; //first byte from client to server
+    last_up_byte_time = 0; //last byte from client to server
 
     total_down_payloads = 0;
     total_up_payloads = 0;
@@ -448,7 +450,7 @@ void tcp_flow::print(u_short processed_flags) {
     printf("%s ", ConvertIPToString(clt_ip)); // 1
     printf("%s ", ConvertIPToString(svr_ip)); //2
     //       3  4  5    6      7     8    9  10 11  12   13   14   15   16    17    18   19   20    21  22  23   24   25   26    27 28 29 30
-    printf("%d %d %.4lf %.4lf %.4lf %.4lf %d %d %d %lld %lld %.4lf %lld %.4lf %.4lf %lld %lld %.4lf %d %.4lf %d %lld %.4lf %.4lf %d %d %d %.4lf %lld %lld ",
+    printf("%d %d %.4lf %.4lf %.4lf %.4lf %d %d %d %lld %lld %.4lf %lld %.4lf %.4lf %lld %lld %.4lf %d %.4lf %d %lld %.4lf %.4lf %d %d %d %.4lf %lld %lld %.4lf %.4lf ",
            clt_port, //3
            svr_port, //4
            start_time, //5
@@ -477,13 +479,15 @@ void tcp_flow::print(u_short processed_flags) {
            window_scale, //28
            window_initial_size, //29
            unaffected_time, //30
-           total_down_data//31
-           total_up_data//32
+           total_down_data,//31
+           total_up_data,//32
+		   first_up_byte_time - start_time, //33
+           last_up_byte_time - start_time//34
            );
     printf("%s %s %s %d\n",
-           user_agent.c_str(), //31+2
-           content_type.c_str(), //32+2
-           host.c_str(), //33+2
-           total_content_length //34+2
+           user_agent.c_str(), //31+4
+           content_type.c_str(), //32+4
+           host.c_str(), //33+4
+           total_content_length //34+4
            );
 }
