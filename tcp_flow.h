@@ -58,6 +58,8 @@ public:
     bool has_ts_option_svr;
     uint64 total_down_payloads;
     uint64 total_up_payloads;
+	uint64 total_down_data;
+    uint64 total_up_data;
     uint64 bytes_in_fly;
     uint64 max_bytes_in_fly;
     uint64 packet_count;

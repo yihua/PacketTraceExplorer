@@ -42,6 +42,8 @@ tcp_flow::tcp_flow() {
 
     total_down_payloads = 0;
     total_up_payloads = 0;
+	total_down_data = 0;
+    total_up_data = 0;
     bytes_in_fly = 0;
     max_bytes_in_fly = 0;
     packet_count = 0;
@@ -445,7 +447,8 @@ void tcp_flow::print(u_short processed_flags) {
     
     printf("%s ", ConvertIPToString(clt_ip)); // 1
     printf("%s ", ConvertIPToString(svr_ip)); //2
-    printf("%d %d %.4lf %.4lf %.4lf %.4lf %d %d %d %lld %lld %.4lf %lld %.4lf %.4lf %lld %lld %.4lf %d %.4lf %d %lld %.4lf %.4lf %d %d %d %.4lf ",
+    //       3  4  5    6      7     8    9  10 11  12   13   14   15   16    17    18   19   20    21  22  23   24   25   26    27 28 29 30
+    printf("%d %d %.4lf %.4lf %.4lf %.4lf %d %d %d %lld %lld %.4lf %lld %.4lf %.4lf %lld %lld %.4lf %d %.4lf %d %lld %.4lf %.4lf %d %d %d %.4lf %lld %lld ",
            clt_port, //3
            svr_port, //4
            start_time, //5
@@ -473,12 +476,14 @@ void tcp_flow::print(u_short processed_flags) {
            http_request_count, //27
            window_scale, //28
            window_initial_size, //29
-           unaffected_time //30
+           unaffected_time, //30
+           total_down_data//31
+           total_up_data//32
            );
     printf("%s %s %s %d\n",
-           user_agent.c_str(), //31
-           content_type.c_str(), //32
-           host.c_str(), //33
-           total_content_length //34
+           user_agent.c_str(), //31+2
+           content_type.c_str(), //32+2
+           host.c_str(), //33+2
+           total_content_length //34+2
            );
 }

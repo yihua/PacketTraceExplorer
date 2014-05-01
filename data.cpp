@@ -39,6 +39,7 @@ u_int ip1, ip2;
 u_int ip_clt, ip_svr;
 u_short port_clt, port_svr;
 u_short payload_len;
+u_short tcp_whole_len;
 double ts;
 double last_prune_time;
 double last_sample_time;
@@ -155,7 +156,8 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                 tcp_count++;
                 ptcp = (tcphdr *)((u_char *)pip + BYTES_PER_32BIT_WORD * pip->ip_hl); //cast of u_char* is necessary
                 payload_len = bswap16(pip->ip_len) - BYTES_PER_32BIT_WORD * (pip->ip_hl + ptcp->th_off);
-                
+				tcp_whole_len = bswap16(pip->ip_len) - BYTES_PER_32BIT_WORD * (pip->ip_hl);
+
                 opt_len = BYTES_PER_32BIT_WORD * ptcp->th_off - 20;
                 opt_ts = (u_int *)((u_char *)ptcp + 20);
                 window_scale = 0;
@@ -436,6 +438,9 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                             if (payload_len > 0) {
                                 flow->total_up_payloads += payload_len;
                             }
+							if (tcp_whole_len > 0) {
+								flow->total_up_data += tcp_whole_len;
+							}
                             if (opt_len == 100) {
                                 //there is TCP timestamp options
                                 flow->has_ts_option_clt = true;
@@ -459,6 +464,9 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                                     flow->first_byte_time = ts;
                                 }
                             }
+							if (tcp_whole_len > 0) {
+								flow->total_down_data += tcp_whole_len;
+							}
                             if (opt_len == 100) //there is TCP timestamp options
                                 flow->has_ts_option_svr = true;
                         }
