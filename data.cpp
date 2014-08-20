@@ -632,7 +632,7 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
             case IPPROTO_UDP:
                 udp_count++;
                 pudp = (udphdr *)((u_char *)pip + sizeof(ip));
-                payload_len = bswap16(pudp->uh_ulen) - UDP_HDR_LEN;
+                payload_len = bswap16(pudp->len) - UDP_HDR_LEN;
                 
                 if (b1 && !b2) { // uplink
                     ip_clt = pip->ip_src.s_addr;
