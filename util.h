@@ -13,6 +13,8 @@
 #include <cmath>
 #include <sstream>
 #include <vector>
+#include <string.h>
+#include <stdio.h>
 
 #include "def.h"
 
