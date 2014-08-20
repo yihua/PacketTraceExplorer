@@ -155,10 +155,10 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                 //break; //TODO only look at UDP now
                 tcp_count++;
                 ptcp = (tcphdr *)((u_char *)pip + BYTES_PER_32BIT_WORD * pip->ip_hl); //cast of u_char* is necessary
-                payload_len = bswap16(pip->ip_len) - BYTES_PER_32BIT_WORD * (pip->ip_hl + ptcp->th_off);
+                payload_len = bswap16(pip->ip_len) - BYTES_PER_32BIT_WORD * (pip->ip_hl + ptcp->doff);
 				tcp_whole_len = bswap16(pip->ip_len) - BYTES_PER_32BIT_WORD * (pip->ip_hl);
 
-                opt_len = BYTES_PER_32BIT_WORD * ptcp->th_off - 20;
+                opt_len = BYTES_PER_32BIT_WORD * ptcp->doff - 20;
                 opt_ts = (u_int *)((u_char *)ptcp + 20);
                 window_scale = 0;
                 
@@ -189,7 +189,7 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                 
                 if (RUNNING_LOCATION == RLOC_CONTROL_CLIENT) {
                     //TCP client side throughput sampling
-                    if (b1 && !b2 && bw_tcp == NULL && (ptcp->th_flags & TH_SYN) != 0) {
+                    if (b1 && !b2 && bw_tcp == NULL && (ptcp->syn) != 0) {
                         bw_tcp = new client_bw(ts, 1.0);
                     }
                     
@@ -201,7 +201,7 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                     
                     //G value ground truth
                     /*if (b1 && !b2) { // uplink
-                        if ((ptcp->th_flags & TH_ACK) != 0) {
+                        if ((ptcp->ack) != 0) {
                             opt_ts = (u_int *)((u_char *)ptcp + 24);
                             if (double_start < 0) {
                                 u_int_start = bswap32(*opt_ts);
@@ -214,33 +214,33 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                     
                     //analyze client trace to understand the delay between data and ack
                     /*if (b1 && !b2) { // uplink
-                        if (ack_delay >= 0 && expected_ack == bswap32(ptcp->th_ack)) {
+                        if (ack_delay >= 0 && expected_ack == bswap32(ptcp->ack_seq)) {
                             cout << "ACK_DELAY " << ts - ack_delay << endl;
                             ack_delay = -1;
-                        } else if (ack_delay >= 0 && expected_ack < bswap32(ptcp->th_ack)) {
+                        } else if (ack_delay >= 0 && expected_ack < bswap32(ptcp->ack_seq)) {
                             //abandon this sample
                             ack_delay = -1;
                         }
                     } else if (!b1 && b2) { //downlink
                         if (ack_delay < 0 && payload_len > 0) {
                             ack_delay = ts;
-                            expected_ack = bswap32(ptcp->th_seq) + payload_len;
+                            expected_ack = bswap32(ptcp->seq) + payload_len;
                         }
                     }*/
                 } else if (RUNNING_LOCATION == RLOC_ATT_SERVER ||
                            RUNNING_LOCATION == RLOC_ATT_CLIENT ||
                            RUNNING_LOCATION == RLOC_CONTROL_SERVER) {
                     if (b1 && !b2) { // uplink
-                        port_clt = bswap16(ptcp->th_sport);
-                        port_svr = bswap16(ptcp->th_dport);
+                        port_clt = bswap16(ptcp->source);
+                        port_svr = bswap16(ptcp->dest);
                         
                         tcp_up_bytes += payload_len;
                         if (port_svr == 80 || port_svr == 8080) {
                             http_up_bytes += payload_len;
                         }
                     } else if (!b1 && b2) { //downlink
-                        port_clt = bswap16(ptcp->th_dport);
-                        port_svr = bswap16(ptcp->th_sport);
+                        port_clt = bswap16(ptcp->dest);
+                        port_svr = bswap16(ptcp->source);
 
                         tcp_down_bytes += payload_len;
                         if (port_svr == 80 || port_svr == 8080) {
@@ -277,19 +277,19 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                              cout << ts << " " << packet_count;
                              cout << " src " << ConvertIPToString(pip->ip_src.s_addr) << " ";
                              cout << " dst " << ConvertIPToString(pip->ip_dst.s_addr) << " ";
-                             cout << bswap32(ptcp->th_ack) << endl;//
+                             cout << bswap32(ptcp->ack_seq) << endl;//
                         } else if (!b1 && b2 && !isUplink) { //downlink, for seq
                             cout << ts << " " << packet_count;
                             cout << " src " << ConvertIPToString(pip->ip_src.s_addr) << " ";
                             cout << " dst " << ConvertIPToString(pip->ip_dst.s_addr) << " ";
-                            cout << bswap32(ptcp->th_seq) << endl;//
+                            cout << bswap32(ptcp->seq) << endl;//
                         }
                     }//*/
                     
                     /*//netflix study, this should be commented out for all other analysis
                     //check whether current packet has TCP payload
-                    if (ETHER_HDR_LEN + BYTES_PER_32BIT_WORD * (pip->ip_hl + ptcp->th_off) < header->caplen)
-                        payload = (char *)((char *)ptcp + BYTES_PER_32BIT_WORD * ptcp->th_off);
+                    if (ETHER_HDR_LEN + BYTES_PER_32BIT_WORD * (pip->ip_hl + ptcp->doff) < header->caplen)
+                        payload = (char *)((char *)ptcp + BYTES_PER_32BIT_WORD * ptcp->doff);
                     else
                         payload = (char *)"";
                     payload_str = string(payload);
@@ -320,7 +320,7 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                     //        content_len = StringToNumber<int>(payload_str.substr(start_pos + 16, end_pos - start_pos - 16));
                     } else if (payload_len > 0 && (!b1 && b2)) {
                         big_flows[big_flow_index].second = ts;
-                    } else if ((ptcp->th_flags & TH_FIN) != 0 || (ptcp->th_flags & TH_RST) != 0) {
+                    } else if ((ptcp->fin) != 0 || (ptcp->rst) != 0) {
                         //output existing HTTP info
                         if (big_flows[big_flow_index].first >= 0 && big_flows[big_flow_index].second > 0) {
                             cout << big_flows[big_flow_index].first << " " << big_flows[big_flow_index].second;
@@ -362,7 +362,7 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                     flow_it_tmp = client_flows.find(flow_index);
                     if (flow_it_tmp != client_flows.end()) {
                         //found flow
-                    } else if (flow_it_tmp == client_flows.end() && (ptcp->th_flags & TH_SYN) != 0 && (b1 && !b2)) {
+                    } else if (flow_it_tmp == client_flows.end() && (ptcp->syn) != 0 && (b1 && !b2)) {
                         //no flow found, now uplink SYN packet
                         
                         /*//big flow analysis
@@ -407,7 +407,7 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                                     flow_it++;
                                     if (flow_it_tmp->second.end_time < ts - FLOW_MAX_IDLE_TIME) {
                                         //delete a flow
-                                        flow_it_tmp->second.print(-1 * ptcp->th_flags);
+                                        //flow_it_tmp->second.print(-1 * ptcp->th_flags);
                                         users[flow_it_tmp->second.clt_ip].tcp_flows.erase(flow_it_tmp->second.clt_port);
                                         client_flows.erase(flow_it_tmp);
                                     }
@@ -427,8 +427,8 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                     flow->packet_count++; //should be before the SYN-RTT analysis
                     
                     //if a terminate flow packet is here, terminate flow and output flow statistics
-                    if ((ptcp->th_flags & TH_FIN) != 0 || (ptcp->th_flags & TH_RST) != 0) {
-                        flow->print((ptcp->th_flags & TH_FIN) | (ptcp->th_flags & TH_RST));
+                    if ((ptcp->fin) != 0 || (ptcp->rst) != 0) {
+                        flow->print((ptcp->fin) | (ptcp->rst));
                         //delete this flow
                         userp->tcp_flows.erase(port_clt);
                         client_flows.erase(flow_index);
@@ -449,15 +449,15 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                                 //there is TCP timestamp options
                                 flow->has_ts_option_clt = true;
                                 
-                                if (flow->packet_count == 1 && (ptcp->th_flags & TH_SYN) != 0) {
+                                if (flow->packet_count == 1 && (ptcp->syn) != 0) {
                                     //SYN
                                     flow->promotion_delay = -1 * bswap32(*opt_ts);
                                     flow->window_scale = window_scale;
-                                } else if (flow->packet_count == 3 && (ptcp->th_flags & TH_SYN) == 0 && flow->promotion_delay < 0) {
+                                } else if (flow->packet_count == 3 && (ptcp->syn) == 0 && flow->promotion_delay < 0) {
                                     //this is not a repeated SYN
                                     //ACK 3
                                     flow->promotion_delay += bswap32(*opt_ts);
-                                    flow->window_initial_size = flow->window_scale * bswap16(ptcp->th_win);
+                                    flow->window_initial_size = flow->window_scale * bswap16(ptcp->window);
                                 }
                             }
                         } else if (!b1 && b2) { //downlink
@@ -483,10 +483,10 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                         port_clt == flow->clt_port &&
                         port_svr == flow->svr_port) {
                         if (b1 && !b2) { // uplink
-                            flow->window_size = flow->window_scale * bswap16(ptcp->th_win); //only update receiver's window
-                            flow->update_ack_x(bswap32(ptcp->th_ack), payload_len, ts);
+                            flow->window_size = flow->window_scale * bswap16(ptcp->window); //only update receiver's window
+                            flow->update_ack_x(bswap32(ptcp->ack_seq), payload_len, ts);
                         } else if (!b1 && b2) { //downlink
-                            flow->update_seq_x(bswap32(ptcp->th_seq), payload_len, ts);
+                            flow->update_seq_x(bswap32(ptcp->seq), payload_len, ts);
                         }
                         //cout << "EMPTY_WINDOW " << ts << " " << flow->window_size - flow->bytes_in_fly << endl;
                         //sample bytes_in_fly
@@ -497,9 +497,9 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                     
                     //HTTP analysis
 					// /*
-					if (ETHER_HDR_LEN + BYTES_PER_32BIT_WORD * (pip->ip_hl + ptcp->th_off) < header->caplen) {
+					if (ETHER_HDR_LEN + BYTES_PER_32BIT_WORD * (pip->ip_hl + ptcp->doff) < header->caplen) {
                         //has TCP payload
-                        payload = (char *)((char *)ptcp + BYTES_PER_32BIT_WORD * ptcp->th_off);
+                        payload = (char *)((char *)ptcp + BYTES_PER_32BIT_WORD * ptcp->doff);
                         payload_str = string(payload);
                         if (b1 && !b2) {
                             //UPLINK
@@ -556,12 +556,12 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                     if (flow->gval < 0) {
                         //do G inference for BW estimate
                         if (b1 && !b2) { // uplink
-                            if ((ptcp->th_flags & TH_ACK) != 0) {
+                            if ((ptcp->ack) != 0) {
                                 if (opt_len == 100) {
                                     if (flow->double_start < 0) {
                                         flow->u_int_start = bswap32(*opt_ts);
                                         flow->double_start = ts;
-                                        //cout << "TCP header length of the first uplink ACK " << BYTES_PER_32BIT_WORD * ptcp->th_off << endl;
+                                        //cout << "TCP header length of the first uplink ACK " << BYTES_PER_32BIT_WORD * ptcp->doff << endl;
                                     } else if (flow->double_start > 0 && ts - flow->double_start > GVAL_TIME) {
                                         flow->gval = (ts - flow->double_start) / (bswap32(*opt_ts) - flow->u_int_start);
                                         //cout << "G_INFER " << " t_off " << (ts - flow->double_start) << " G: " << flow->gval << " s/tick" << endl;
@@ -574,12 +574,12 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                         if (ip_clt == flow->clt_ip && ip_svr == flow->svr_ip &&
                             port_clt == flow->clt_port && port_svr == flow->svr_port) {
                             if (b1 && !b2) { // uplink
-                                if ((ptcp->th_flags & TH_ACK) != 0) {
-                                    flow->update_ack(bswap32(ptcp->th_ack), payload_len, flow->gval * bswap32(*opt_ts), ts);
+                                if ((ptcp->ack) != 0) {
+                                    flow->update_ack(bswap32(ptcp->ack_seq), payload_len, flow->gval * bswap32(*opt_ts), ts);
                                 }
                             } else if (!b1 && b2) { //downlink
                                 //payload_len > < 0 check inside update_seq
-                                flow->update_seq(bswap32(ptcp->th_seq), payload_len, ts);
+                                flow->update_seq(bswap32(ptcp->seq), payload_len, ts);
                             }
                         }
                     }//*/
@@ -587,7 +587,7 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                     /*//G inference
                     if (RUNNING_LOCATION == RLOC_CONTROL_SERVER) {
                         if (b1 && !b2) { // uplink
-                            if ((ptcp->th_flags & TH_ACK) != 0) {
+                            if ((ptcp->ack) != 0) {
                                 if (flow->double_start < 0 && ts > 100) {
                                     flow->u_int_start = bswap32(*opt_ts);
                                     flow->double_start = ts;
@@ -614,14 +614,14 @@ void dispatcher_handler(u_char *c, const struct pcap_pkthdr *header, const u_cha
                             if (b1 && !b2) { // uplink
                                 //cout << "target uplink packet " << packet_count << endl;
                                 //target flow, ack packets
-                                if (bswap32(ptcp->th_ack) > 0) {
-                                    flow->update_ack(bswap32(ptcp->th_ack), ts);
+                                if (bswap32(ptcp->ack_seq) > 0) {
+                                    flow->update_ack(bswap32(ptcp->ack_seq), ts);
                                 }
                             } else if (!b1 && b2) { //downlink
                                 //cout << "target downlink packet " << packet_count << endl;
                                 //target flow
                                 if (payload_len >= TCP_MAX_PAYLOAD) {
-                                    flow->update_seq(bswap32(ptcp->th_seq), payload_len, ts);
+                                    flow->update_seq(bswap32(ptcp->seq), payload_len, ts);
                                 }
                             }
                         }
