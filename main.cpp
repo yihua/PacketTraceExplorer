@@ -90,7 +90,7 @@ int main(int argc, const char * argv[]) {
     uint64 begin_time = clock();
     
     //string dir = "/q/gp13/dpi/tcprx/VTCLTEHEADER/gstmp/"; //gz dir
-    string dir = "/q/gp13/dpi/tcprx/work/raw/";
+    string dir = "/q/gp13/dpi/tcpheader/raw/";
     string prefix = "t1012.";//
     string suffix = ".pcap.hdr.pcap";
     
